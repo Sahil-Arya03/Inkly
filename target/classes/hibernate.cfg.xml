@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE hibernate-configuration PUBLIC
+                "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+                "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+
+<hibernate-configuration>
+<session-factory>
+    <property name="hibernate.connection.driver_class">org.postgresql.Driver</property>
+    <property name="hibernate.connection.url">jdbc:postgresql://localhost:5432/jdbclearning</property>
+    <property name="hibernate.connection.username">postgres</property>
+    <property name="hibernate.connection.password">2000</property>
+    <property name="hibernate.dialect">org.hibernate.dialect.PostgreSQLDialect</property>
+    <property name="hibernate.show_sql">true</property>
+    <!-- update automatically sees that whether we have to create a table or update -->
+    <property name="hibernate.hbm2ddl.auto">create</property>
+    <!-- This is to tell hibernate that this both the class exist-->
+    <mapping class="com.entities.Note"/>
+
+</session-factory>
+</hibernate-configuration>

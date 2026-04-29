@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Inkly – Task Board</title>
+    <title>Inkly</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
@@ -336,7 +336,7 @@
 <aside class="sidebar">
     <div class="sidebar-logo">
         <div class="logo-mark">I</div>
-        <span class="logo-text">inkly</span>
+        <span class="logo-text">Inkly</span>
     </div>
 
     <div class="sidebar-section">
@@ -395,7 +395,7 @@
     <!-- Board Header -->
     <div class="board-header">
         <div class="board-date">
-            <div class="board-title">May</div>
+            <div class="board-title" id="currentMonth">May</div>
             <div class="board-subtitle" id="todayDate"></div>
         </div>
 
@@ -677,6 +677,8 @@
         const opts={weekday:'long',year:'numeric',month:'long',day:'numeric'};
         document.getElementById('todayDate').textContent=
             'Today is '+d.toLocaleDateString('en-US',opts);
+        document.getElementById('currentMonth').textContent=
+            d.toLocaleDateString('en-US',{month:'long'});
     }
 
     // ── KEYBOARD ────────────────────────────────────────────────────

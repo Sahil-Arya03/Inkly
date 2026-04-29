@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Inkly – Task Board</title>
+    <title>Inkly</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
     <style>
         *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
@@ -35,7 +36,8 @@
 
         /* ── SIDEBAR ── */
         .sidebar{
-            width:200px;min-width:200px;background:var(--sidebar-bg);
+            width:220px;min-width:220px;background:var(--sidebar-bg);
+            box-shadow: 4px 0 24px rgba(0,0,0,0.02);
             display:flex;flex-direction:column;padding:0;
             border-right:1px solid var(--border);position:relative;z-index:10;
             height:100vh;overflow-y:auto;
@@ -61,11 +63,12 @@
         .sidebar-label{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--text-light);padding:10px 6px 4px;}
 
         .nav-item{
-            display:flex;align-items:center;gap:10px;
-            padding:8px 10px;border-radius:9px;cursor:pointer;
-            font-size:13px;font-weight:500;color:var(--text-muted);
-            transition:all .15s;margin:1px 0;position:relative;
+            display:flex;align-items:center;gap:12px;
+            padding:10px 12px;border-radius:10px;cursor:pointer;
+            font-size:14px;font-weight:500;color:var(--text-muted);
+            transition:all .2s ease;margin:2px 0;position:relative;
         }
+        .nav-item i { font-size: 20px; transition: color 0.2s ease; }
         .nav-item:hover{background:var(--bg);color:var(--text);}
         .nav-item.active{background:var(--accent-light);color:var(--accent);}
         .nav-badge{
@@ -95,7 +98,9 @@
         .topbar{
             background:var(--surface);border-bottom:1px solid var(--border);
             display:flex;align-items:center;gap:16px;padding:0 24px;
-            height:60px;flex-shrink:0;
+            height:68px;flex-shrink:0;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.02);
+            position:relative;z-index:9;
         }
         .topbar-welcome{font-size:13px;color:var(--text-muted);white-space:nowrap;}
         .topbar-welcome strong{display:block;font-size:14px;font-weight:600;color:var(--text);}
@@ -171,11 +176,12 @@
         }
 
         .col-header{
-            display:flex;align-items:center;gap:8px;
-            padding:14px 14px 10px;border-bottom:1px solid var(--border);flex-shrink:0;
+            display:flex;align-items:center;gap:10px;
+            padding:16px 16px 12px;border-bottom:1px solid rgba(0,0,0,0.04);flex-shrink:0;
         }
-        .col-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-        .col-name{font-size:13px;font-weight:700;color:var(--text);flex:1;}
+        .col-header i { font-size: 20px; }
+        .col-dot{display:none;}
+        .col-name{font-size:14px;font-weight:700;color:var(--text);flex:1;}
         .col-count{
             font-size:11px;font-weight:600;color:var(--text-muted);
             background:var(--bg);padding:2px 7px;border-radius:20px;
@@ -194,14 +200,15 @@
 
         /* ── CARD ── */
         .card{
-            background:#fff;border:1px solid var(--border);
-            border-radius:var(--card-radius);padding:12px;
+            background:#fff;border:1px solid rgba(0,0,0,0.06);
+            border-radius:var(--card-radius);padding:16px;
             cursor:pointer;transition:all .2s cubic-bezier(.22,1,.36,1);
             animation:cardSlide .3s cubic-bezier(.22,1,.36,1) both;
             position:relative;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.02);
         }
         @keyframes cardSlide{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-        .card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.08);border-color:#ddd;}
+        .card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,.08);border-color:var(--accent-light);}
 
         .card-tags{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;}
         .tag{
@@ -329,37 +336,37 @@
 <aside class="sidebar">
     <div class="sidebar-logo">
         <div class="logo-mark">I</div>
-        <span class="logo-text">inkly</span>
+        <span class="logo-text">Inkly</span>
     </div>
 
     <div class="sidebar-section">
         <div class="nav-item active">
-            Tasks
+            <i class="ph ph-kanban"></i> Tasks
             <span class="nav-badge" id="totalBadge">16</span>
         </div>
         <div class="nav-item">
-            Activities
+            <i class="ph ph-activity"></i> Activities
         </div>
     </div>
 
     <div class="sidebar-section">
         <div class="sidebar-label">Main</div>
-        <div class="nav-item">Dashboard</div>
-        <div class="nav-item">Schedule</div>
-        <div class="nav-item">Note</div>
-        <div class="nav-item">Products</div>
-        <div class="nav-item">Report</div>
+        <div class="nav-item"><i class="ph ph-squares-four"></i> Dashboard</div>
+        <div class="nav-item"><i class="ph ph-calendar-blank"></i> Schedule</div>
+        <div class="nav-item"><i class="ph ph-note"></i> Note</div>
+        <div class="nav-item"><i class="ph ph-package"></i> Products</div>
+        <div class="nav-item"><i class="ph ph-chart-bar"></i> Report</div>
     </div>
 
     <div class="sidebar-section">
         <div class="sidebar-label">Records</div>
-        <div class="nav-item">Team</div>
-        <div class="nav-item">Clients</div>
+        <div class="nav-item"><i class="ph ph-users"></i> Team</div>
+        <div class="nav-item"><i class="ph ph-handshake"></i> Clients</div>
     </div>
 
     <div class="sidebar-section" style="margin-top:auto;padding-top:0;">
-        <div class="nav-item">Settings</div>
-        <div class="nav-item">Support</div>
+        <div class="nav-item"><i class="ph ph-gear"></i> Settings</div>
+        <div class="nav-item"><i class="ph ph-question"></i> Support</div>
     </div>
 
     <div class="sidebar-footer">
@@ -388,7 +395,7 @@
     <!-- Board Header -->
     <div class="board-header">
         <div class="board-date">
-            <div class="board-title">May</div>
+            <div class="board-title" id="currentMonth">May</div>
             <div class="board-subtitle" id="todayDate"></div>
         </div>
 
@@ -404,8 +411,8 @@
             <div class="board-avatar" style="background:linear-gradient(135deg,#7c6af5,#a78bfa)">+3</div>
         </div>
 
-        <button class="btn-filters">Filters</button>
-        <button class="btn-create" onclick="openCreate()">Create task</button>
+        <button class="btn-filters"><i class="ph ph-sliders-horizontal"></i> Filters</button>
+        <button class="btn-create" onclick="openCreate()"><i class="ph ph-plus-bold"></i> Create task</button>
     </div>
 
     <!-- Board -->
@@ -415,7 +422,7 @@
             <!-- TODO -->
             <div class="column" data-col="todo">
                 <div class="col-header">
-                    <div class="col-dot"></div>
+                    <i class="ph-fill ph-circle-dashed"></i>
                     <span class="col-name">Todo list</span>
                     <span class="col-count" id="count-todo">0</span>
                     <button class="col-add" onclick="openCreate('todo')">Add</button>
@@ -426,7 +433,7 @@
             <!-- IN PROGRESS -->
             <div class="column" data-col="progress">
                 <div class="col-header">
-                    <div class="col-dot"></div>
+                    <i class="ph-fill ph-spinner-gap"></i>
                     <span class="col-name">In Progress</span>
                     <span class="col-count" id="count-progress">0</span>
                     <button class="col-add" onclick="openCreate('progress')">Add</button>
@@ -437,7 +444,7 @@
             <!-- IN REVIEW -->
             <div class="column" data-col="review">
                 <div class="col-header">
-                    <div class="col-dot"></div>
+                    <i class="ph-fill ph-eye"></i>
                     <span class="col-name">In Review</span>
                     <span class="col-count" id="count-review">0</span>
                     <button class="col-add" onclick="openCreate('review')">Add</button>
@@ -448,7 +455,7 @@
             <!-- DONE -->
             <div class="column" data-col="done">
                 <div class="col-header">
-                    <div class="col-dot"></div>
+                    <i class="ph-fill ph-check-circle"></i>
                     <span class="col-name">Done</span>
                     <span class="col-count" id="count-done">0</span>
                     <button class="col-add" onclick="openCreate('done')">Add</button>
@@ -670,6 +677,8 @@
         const opts={weekday:'long',year:'numeric',month:'long',day:'numeric'};
         document.getElementById('todayDate').textContent=
             'Today is '+d.toLocaleDateString('en-US',opts);
+        document.getElementById('currentMonth').textContent=
+            d.toLocaleDateString('en-US',{month:'long'});
     }
 
     // ── KEYBOARD ────────────────────────────────────────────────────

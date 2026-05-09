@@ -1,0 +1,7 @@
+{
+  "name": "inkly",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "npx live-server src/main/webapp --open=Inkly.html --port=3000 --no-browser=false"
+  }
+}

@@ -1,7 +1,7 @@
 /* Login screen */
 const { useState: useStateLogin } = React;
 
-function Login({ onSignIn, theme, onTheme }) {
+function Login({ onSignIn, theme, onTheme, onNavSignup }) {
   const [email, setEmail] = useStateLogin("avery@inkly.team");
   const [pw, setPw] = useStateLogin("");
   const [showPw, setShowPw] = useStateLogin(false);
@@ -17,7 +17,15 @@ function Login({ onSignIn, theme, onTheme }) {
     setErrs(next);
     if (Object.keys(next).length) return;
     setLoading(true);
-    setTimeout(() => { setLoading(false); onSignIn(); }, 950);
+    INKLY_API.login(email, pw)
+      .then(data => {
+        setLoading(false);
+        onSignIn(data.email);
+      })
+      .catch(err => {
+        setLoading(false);
+        setErrs({ pw: err.message });
+      });
   }
 
   return (
@@ -146,7 +154,8 @@ function Login({ onSignIn, theme, onTheme }) {
           </button>
 
           <div className="auth__footer">
-            New to Inkly? <a href="#">Request access</a>
+            New to Inkly?{" "}
+            <a href="#" onClick={e => { e.preventDefault(); onNavSignup && onNavSignup(); }}>Create a workspace</a>
           </div>
         </form>
       </div>

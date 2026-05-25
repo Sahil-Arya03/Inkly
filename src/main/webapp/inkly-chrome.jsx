@@ -7,101 +7,81 @@ function Avatar({ p, size = "" }) {
   return <span className={cls} title={p.name}>{p.initials}</span>;
 }
 
-function Sidebar({ active, onNav, onLogout, collapsed, onCollapse }) {
-  const items = [
-    { id: "dashboard", label: "Dashboard",      icon: <Icons.Home /> , badge: null },
-    { id: "tasks",     label: "My Tasks",       icon: <Icons.Check s={15}/>, badge: 7 },
-    { id: "kanban",    label: "Kanban Workflow",icon: <Icons.Layers />, badge: null },
-    { id: "teams",     label: "Team Boards",    icon: <Icons.Users  />, badge: null },
-    { id: "calendar",  label: "Calendar",       icon: <Icons.Cal    />, badge: null },
-    { id: "analytics", label: "Analytics",      icon: <Icons.Chart  />, badge: null },
-    { id: "inbox",     label: "Notifications",  icon: <Icons.Inbox  />, badge: 12 },
-    { id: "settings",  label: "Settings",       icon: <Icons.Cog    />, badge: null },
-  ];
-  const favorites = [
-    { id: "f1", label: "Sprint 24",            dot: "accent" },
-    { id: "f2", label: "Onboarding · v2",      dot: "violet" },
-    { id: "f3", label: "Q2 OKRs",              dot: "amber"  },
-  ];
-  return (
-    <aside className="side">
-      <div className="side__brand">
-        <div className="side__brand-mark"><Icons.Logo s={16}/></div>
-        <div>
-          <div className="side__brand-name">Inkly</div>
-          <div className="side__brand-sub">Workspace · Studio</div>
-        </div>
-        <button
-          className="side__toggle"
-          onClick={onCollapse}
-          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          type="button"
-        >
-          <Icons.Chevron s={13} style={{transform: collapsed ? "none" : "rotate(180deg)"}} />
-        </button>
-      </div>
+function Sidebar({ active, onNav, onLogout }) {
+  const primary = [
+  { id: "dashboard", label: "Dashboard", icon: <Icons.Home s={18} />, badge: null },
+  { id: "tasks", label: "My Tasks", icon: <Icons.Check s={17} />, badge: 7 },
+  { id: "kanban", label: "Kanban Workflow", icon: <Icons.Layers s={18} />, badge: null },
+  { id: "teams", label: "Team Boards", icon: <Icons.Users s={18} />, badge: null },
+  { id: "calendar", label: "Calendar", icon: <Icons.Cal s={18} />, badge: null },
+  { id: "analytics", label: "Analytics", icon: <Icons.Chart s={18} />, badge: null },
+  { id: "inbox", label: "Notifications", icon: <Icons.Inbox s={18} />, badge: 12 }];
 
-      <button className="side__ws" type="button">
-        <span className="side__ws-glyph">N</span>
-        <span className="side__ws-name">Northwind Studio</span>
-        <Icons.ChevDn />
+  const secondary = [
+  { id: "settings", label: "Settings", icon: <Icons.Cog s={18} /> }];
+
+
+  const RailItem = ({ it }) =>
+  <button
+    type="button"
+    className={`rail__item ${active === it.id ? "rail__item--active" : ""}`}
+    onClick={() => onNav(it.id)}
+    aria-label={it.label}
+    aria-current={active === it.id ? "page" : undefined}>
+
+      {it.icon}
+      {it.badge != null && <span className="rail__badge">{it.badge}</span>}
+      <span className="rail__tip">{it.label}</span>
+    </button>;
+
+
+  return (
+    <aside className="rail" aria-label="Primary navigation">
+      <button type="button" className="rail__brand" aria-label="Inkly · Northwind Studio">
+        <span className="rail__brand-mark"><Icons.Logo s={16} /></span>
+        <span className="rail__tip">Inkly · Northwind Studio</span>
       </button>
 
-      <div className="side__nav">
-        {items.map(it => (
-          <div
-            key={it.id}
-            className={`side__item ${active === it.id ? "side__item--active" : ""}`}
-            onClick={() => onNav(it.id)}
-            title={it.label}
-          >
-            {it.icon}
-            <span className="side__item-label">{it.label}</span>
-            {it.badge != null && <span className="side__item-badge">{it.badge}</span>}
-          </div>
-        ))}
+      <div className="rail__divider" />
 
-        <div className="side__group-label">Favorites</div>
-        {favorites.map(f => (
-          <div key={f.id} className="side__item" title={f.label}>
-            <span className={`dot dot--${f.dot}`} style={{marginLeft: 4}} />
-            <span className="side__item-label">{f.label}</span>
-          </div>
-        ))}
-      </div>
+      <nav className="rail__nav">
+        {primary.map((it) => <RailItem key={it.id} it={it} />)}
+      </nav>
 
-      <div className="side__divider" />
-      <div className="side__user">
-        <div className="side__user-av">{INKLY_DATA.ME.initials}</div>
-        <div style={{minWidth: 0}}>
-          <div className="side__user-name">{INKLY_DATA.ME.name}</div>
-          <div className="side__user-role">Online · {INKLY_DATA.ME.role}</div>
-        </div>
-        <button className="side__user-logout" onClick={onLogout} title="Sign out">
-          <Icons.Out />
-        </button>
-      </div>
-    </aside>
-  );
+      <div className="rail__spacer" />
+
+      <nav className="rail__nav rail__nav--bottom">
+        {secondary.map((it) => <RailItem key={it.id} it={it} />)}
+      </nav>
+
+      <button type="button" className="rail__user" onClick={onLogout} aria-label={`${INKLY_DATA.ME.name} · sign out`}>
+        <span className="rail__user-av">{INKLY_DATA.ME.initials}</span>
+        <span className="rail__tip">
+          <strong>{INKLY_DATA.ME.name}</strong>
+          <em>Online · {INKLY_DATA.ME.role}</em>
+          <span className="rail__tip-cta">Click to sign out</span>
+        </span>
+      </button>
+    </aside>);
+
 }
 
 function Crumbs({ path }) {
   return (
     <div className="top__crumbs">
-      {path.map((seg, i) => (
-        <React.Fragment key={i}>
+      {path.map((seg, i) =>
+      <React.Fragment key={i}>
           {i > 0 && <Icons.Chevron />}
           {i === path.length - 1 ? <strong>{seg}</strong> : <span>{seg}</span>}
         </React.Fragment>
-      ))}
-    </div>
-  );
+      )}
+    </div>);
+
 }
 
-function Topbar({ crumbs, theme, onTheme, onCreate }) {
+function Topbar({ theme, onTheme, onCreate }) {
   return (
     <div className="top">
-      <Crumbs path={crumbs} />
       <label className="top__search">
         <Icons.Search />
         <input placeholder="Search pages, tasks, people…" />
@@ -109,9 +89,9 @@ function Topbar({ crumbs, theme, onTheme, onCreate }) {
       </label>
       <div className="top__spacer" />
       <div className="top__btns">
-        <span className="avstack" style={{marginRight: 8}}>
-          {INKLY_DATA.PEOPLE.slice(0, 4).map(p => <Avatar key={p.id} p={p} />)}
-          <span className="av" style={{background: "var(--paper-3)", color: "var(--ink-3)", fontWeight: 500}}>+8</span>
+        <span className="avstack" style={{ marginRight: 8 }}>
+          {INKLY_DATA.PEOPLE.slice(0, 4).map((p) => <Avatar key={p.id} p={p} />)}
+          <span className="av" style={{ background: "var(--paper-3)", color: "var(--ink-3)", fontWeight: 500 }}>+8</span>
         </span>
         <button className="icon-btn icon-btn--has-dot" title="Notifications"><Icons.Bell /></button>
         <button className="icon-btn" title="Theme" onClick={onTheme}>
@@ -121,8 +101,8 @@ function Topbar({ crumbs, theme, onTheme, onCreate }) {
           <Icons.Plus /> New
         </button>
       </div>
-    </div>
-  );
+    </div>);
+
 }
 
 window.Sidebar = Sidebar;

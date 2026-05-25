@@ -12,18 +12,15 @@ function applyAccent(key) {
   const a = ACCENT_PRESETS[key] || ACCENT_PRESETS["ink-blue"];
   const r = document.documentElement.style;
   r.setProperty("--accent", a.base);
-  // only override soft/tint/ink in light mode; dark theme overrides them
   if (document.documentElement.dataset.theme !== "dark") {
     r.setProperty("--accent-soft", a.soft);
     r.setProperty("--accent-tint", a.tint);
     r.setProperty("--accent-ink",  a.ink);
   } else {
-    // dark — derive a brighter ink for legibility
     r.setProperty("--accent-ink", `oklch(0.85 0.10 ${getHue(a.base)})`);
   }
 }
 function getHue(oklch) {
-  // crude parse — pulls the third number out of "oklch(L C H)"
   const m = oklch.match(/oklch\(\s*[\d.]+\s+[\d.]+\s+([\d.]+)/);
   return m ? m[1] : "250";
 }
@@ -46,7 +43,6 @@ function App() {
   const [t, setTweak] = useTweaks(defaults);
   const [route, setRoute] = useStateApp(defaults.startScreen || "login");
   const [toasts, setToasts] = useStateApp([]);
-  const [sideCollapsed, setSideCollapsed] = useStateApp(false);
 
   const pushToast = useCallbackApp((text) => {
     const id = Math.random().toString(36).slice(2);
@@ -54,22 +50,35 @@ function App() {
     setTimeout(() => setToasts(ts => ts.filter(x => x.id !== id)), 2400);
   }, []);
 
-  // theme
   useEffectApp(() => {
     document.documentElement.dataset.theme = t.theme;
     applyAccent(t.accent);
   }, [t.theme, t.accent]);
 
-  // density
   useEffectApp(() => {
     document.documentElement.dataset.density = t.density;
   }, [t.density]);
 
-  function handleSignIn() {
+  useEffectApp(() => {
+    function onSessionExpired() {
+      setRoute("login");
+      pushToast("Session expired — please sign in again.");
+    }
+    window.addEventListener("inkly:session-expired", onSessionExpired);
+    return () => window.removeEventListener("inkly:session-expired", onSessionExpired);
+  }, []);
+
+  function handleSignIn(email) {
     setRoute("dashboard");
-    pushToast("Welcome back, Avery");
+    const handle = email ? email.split("@")[0] : "there";
+    pushToast("Welcome back, " + handle[0].toUpperCase() + handle.slice(1) + "!");
+  }
+  function handleSignedUp() {
+    setRoute("dashboard");
+    pushToast("Workspace created — welcome to Inkly!");
   }
   function handleLogout() {
+    INKLY_API.logout();
     setRoute("login");
   }
 
@@ -78,11 +87,9 @@ function App() {
     setTweak("theme", next);
   }
 
-  // map accent <-> hex (TweakColor stores hex; we resolve back to preset key)
   const hexFromAccent = (key) => (ACCENT_PRESETS[key] || ACCENT_PRESETS["ink-blue"]).swatch;
   const accentFromHex = (hex) => Object.keys(ACCENT_PRESETS).find(k => ACCENT_PRESETS[k].swatch === hex) || "ink-blue";
 
-  // ----- Tweaks panel -----
   const tweaksPanel = (
     <TweaksPanel title="Tweaks">
       <TweakSection label="Theme & accent">
@@ -110,14 +117,18 @@ function App() {
         />
       </TweakSection>
       <TweakSection label="Navigate">
-        <TweakRadio
+        <TweakSelect
           label="Page"
           value={route}
           onChange={(v) => setRoute(v)}
           options={[
             { value: "login",     label: "Login" },
+            { value: "signup",    label: "Signup" },
             { value: "dashboard", label: "Home"  },
             { value: "kanban",    label: "Kanban" },
+            { value: "calendar",  label: "Calendar" },
+            { value: "teams",     label: "Teams" },
+            { value: "inbox",     label: "Inbox" },
           ]}
         />
         <TweakButton label="Demo toast" onClick={() => pushToast("This is a toast notification")} />
@@ -125,7 +136,6 @@ function App() {
     </TweaksPanel>
   );
 
-  // ----- Routing -----
   if (route === "login") {
     return (
       <div className="app app--login">
@@ -133,6 +143,22 @@ function App() {
           theme={t.theme}
           onTheme={(v) => setTweak("theme", v)}
           onSignIn={handleSignIn}
+          onNavSignup={() => setRoute("signup")}
+        />
+        <Toasts items={toasts} />
+        {tweaksPanel}
+      </div>
+    );
+  }
+
+  if (route === "signup") {
+    return (
+      <div className="app app--login">
+        <Signup
+          theme={t.theme}
+          onTheme={(v) => setTweak("theme", v)}
+          onSignedUp={handleSignedUp}
+          onNavLogin={() => setRoute("login")}
         />
         <Toasts items={toasts} />
         {tweaksPanel}
@@ -154,14 +180,16 @@ function App() {
   let content = null;
   if (route === "dashboard") content = <Dashboard onPushToast={pushToast} />;
   else if (route === "kanban") content = <Kanban onPushToast={pushToast} />;
+  else if (route === "calendar") content = <CalendarPage onPushToast={pushToast} />;
+  else if (route === "teams") content = <TeamBoardsPage onNav={setRoute} onPushToast={pushToast} />;
+  else if (route === "inbox") content = <InboxPage onPushToast={pushToast} />;
   else content = <Placeholder name={(crumbsByRoute[route] || [])[1] || "Coming soon"} />;
 
   return (
-    <div className={`app${sideCollapsed ? " app--rail" : ""}`}>
-      <Sidebar active={route} onNav={setRoute} onLogout={handleLogout} collapsed={sideCollapsed} onCollapse={() => setSideCollapsed(c => !c)} />
+    <div className="app">
+      <Sidebar active={route} onNav={setRoute} onLogout={handleLogout} />
       <div className="main">
         <Topbar
-          crumbs={crumbsByRoute[route] || ["Inkly"]}
           theme={t.theme}
           onTheme={() => toggleTheme()}
           onCreate={() => pushToast("Quick-create opened")}

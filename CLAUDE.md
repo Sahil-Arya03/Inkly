@@ -21,7 +21,7 @@ mvn cargo:run            # alternative: embedded Tomcat on port 8080
 mvn test                 # run JUnit tests
 ```
 
-**Required environment variables (backend):** secrets are no longer in `application.properties` — the app fails fast at startup if one is missing. See `.env.example` for the full list (`DB_PASSWORD`, `JWT_SECRET`, `GOOGLE_OAUTH_CLIENT_SECRET`, `CALENDAR_TOKEN_ENCRYPTION_KEY`). Spring does not read `.env` files; set them in the shell before starting the backend, e.g. (PowerShell):
+**Required environment variables (backend):** secrets are no longer in `application.properties` — the app fails fast at startup if one is missing. See `.env.example` for the full list (`DB_PASSWORD`, `JWT_SECRET`, `GOOGLE_OAUTH_CLIENT_SECRET`, `CALENDAR_TOKEN_ENCRYPTION_KEY`). Production deployments additionally set `SPRING_PROFILES_ACTIVE=prod` plus `CORS_ALLOWED_ORIGINS`, `GOOGLE_OAUTH_REDIRECT_URI`, and `CALENDAR_OAUTH_SUCCESS_REDIRECT` (see `application-prod.properties` — secure cookies on, `show-sql` off, no localhost values). Spring does not read `.env` files; set them in the shell before starting the backend, e.g. (PowerShell):
 ```powershell
 $env:DB_PASSWORD='...'; $env:JWT_SECRET='...'; $env:GOOGLE_OAUTH_CLIENT_SECRET='...'; $env:CALENDAR_TOKEN_ENCRYPTION_KEY='...'
 mvn spring-boot:run

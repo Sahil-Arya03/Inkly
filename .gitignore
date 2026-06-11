@@ -4,6 +4,10 @@ target/
 *.jar
 *.class
 
+# ── Vite frontend build output ──────────────────────────────────────────────
+frontend/dist/
+dist/
+
 # ── IDE — IntelliJ IDEA ─────────────────────────────────────────────────────
 .idea/
 *.iml
@@ -37,3 +41,5 @@ desktop.ini
 .env
 .env.*
 !.env.example
+cookies.txt
+cookies2.txt

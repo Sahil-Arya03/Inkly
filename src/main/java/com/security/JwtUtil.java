@@ -27,10 +27,15 @@ public class JwtUtil {
     }
 
     public String generate(String email) {
+        return generate(email, false);
+    }
+
+    public String generate(String email, boolean rememberMe) {
+        long expiry = rememberMe ? 30L * 24 * 60 * 60 * 1000 : expiryMs;
         return Jwts.builder()
                 .setSubject(email)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + expiryMs))
+                .setExpiration(new Date(System.currentTimeMillis() + expiry))
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }

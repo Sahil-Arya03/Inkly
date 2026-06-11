@@ -111,7 +111,17 @@ public class GoogleOAuthService {
             return link;
         }
 
-        String refreshToken = tokenEncryption.decrypt(link.getRefreshTokenEnc());
+        String refreshToken;
+        try {
+            refreshToken = tokenEncryption.decrypt(link.getRefreshTokenEnc());
+        } catch (TokenEncryptionService.TokenDecryptionException e) {
+            // Stored token is unreadable (key rotated/lost). Drop the link so the
+            // user shows as "not connected" and re-authorizes; never 500.
+            log.warn("Refresh token for user {} cannot be decrypted; unlinking Google Calendar. "
+                    + "Re-authorization required.", link.getUserId());
+            links.delete(link);
+            throw new IOException("Google Calendar link is no longer valid; re-authorization required", e);
+        }
         GoogleTokenResponse resp = new GoogleRefreshTokenRequest(
                 httpTransport, jsonFactory, refreshToken, clientId, clientSecret)
                 .execute();

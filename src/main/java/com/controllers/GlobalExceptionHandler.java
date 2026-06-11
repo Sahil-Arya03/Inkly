@@ -2,6 +2,7 @@ package com.controllers;
 
 import com.dto.ErrorResponse;
 import com.kanban.service.CardService;
+import com.security.LoginRateLimiter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -45,6 +46,14 @@ public class GlobalExceptionHandler {
         log.warn("Request body parse error: {}", ex.getMessage());
         return ResponseEntity.badRequest()
                 .body(new ErrorResponse("BAD_REQUEST", "Invalid request body: " + ex.getMostSpecificCause().getMessage()));
+    }
+
+    @ExceptionHandler(LoginRateLimiter.RateLimitExceededException.class)
+    public ResponseEntity<ErrorResponse> handleRateLimit(LoginRateLimiter.RateLimitExceededException ex) {
+        // Deliberately generic: must not reveal whether the account exists.
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+                .body(new ErrorResponse("TOO_MANY_REQUESTS", "Too many attempts. Please try again later."));
     }
 
     @ExceptionHandler(CardService.WipLimitExceededException.class)

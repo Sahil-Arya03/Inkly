@@ -7,6 +7,8 @@ import com.entities.User;
 import com.kanban.service.WorkspaceSetupService;
 import com.repositories.UserRepository;
 import com.security.JwtUtil;
+import com.security.LoginRateLimiter;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
@@ -24,6 +26,7 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final WorkspaceSetupService workspaceSetup;
+    private final LoginRateLimiter rateLimiter;
 
     /**
      * Adds the Secure attribute to the auth cookie. false for plain-HTTP dev;
@@ -33,16 +36,20 @@ public class AuthController {
     private boolean cookieSecure;
 
     public AuthController(UserRepository userRepo, PasswordEncoder passwordEncoder,
-                          JwtUtil jwtUtil, WorkspaceSetupService workspaceSetup) {
+                          JwtUtil jwtUtil, WorkspaceSetupService workspaceSetup,
+                          LoginRateLimiter rateLimiter) {
         this.userRepo = userRepo;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.workspaceSetup = workspaceSetup;
+        this.rateLimiter = rateLimiter;
     }
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest req,
+                                                  HttpServletRequest httpReq,
                                                   HttpServletResponse res) {
+        rateLimiter.checkAttempt(clientIp(httpReq), req.getEmail());
         if (userRepo.findByEmail(req.getEmail()).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
         }
@@ -62,10 +69,17 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest req,
+                                               HttpServletRequest httpReq,
                                                HttpServletResponse res) {
+        String ip = clientIp(httpReq);
+        rateLimiter.checkAttempt(ip, req.getEmail());
         User user = userRepo.findByEmail(req.getEmail())
                 .filter(u -> passwordEncoder.matches(req.getPassword(), u.getPasswordHash()))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password"));
+                .orElseThrow(() -> {
+                    rateLimiter.recordFailure(ip, req.getEmail());
+                    return new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
+                });
+        rateLimiter.recordSuccess(ip, req.getEmail());
         workspaceSetup.bootstrap(user.getEmail(), user.getName(), user.getWorkspace());
         boolean rememberMe = req.isRememberMe();
         int maxAge = rememberMe ? 30 * 24 * 3600 : 24 * 3600;
@@ -78,6 +92,16 @@ public class AuthController {
     public ResponseEntity<Void> logout(HttpServletResponse res) {
         setCookieHeader(res, "", 0);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Rate-limit key. Uses the socket address on purpose: X-Forwarded-For is
+     * client-spoofable unless set by a trusted proxy. When deploying behind a
+     * load balancer, configure server.forward-headers-strategy so
+     * getRemoteAddr() reflects the real client.
+     */
+    private static String clientIp(HttpServletRequest req) {
+        return req.getRemoteAddr();
     }
 
     private void setCookieHeader(HttpServletResponse res, String token, int maxAgeSec) {

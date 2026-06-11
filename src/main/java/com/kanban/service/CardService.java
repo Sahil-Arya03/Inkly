@@ -49,13 +49,13 @@ public class CardService {
     public CardResponse createCard(CreateCardRequest req, String callerEmail) {
         // --- 1. Resolve references ---
         Workspace workspace = workspaces.findById(req.workspaceId())
-                .orElseThrow(() -> new IllegalArgumentException("Workspace not found: " + req.workspaceId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Workspace not found: " + req.workspaceId()));
         Board board = boards.findById(req.boardId())
-                .orElseThrow(() -> new IllegalArgumentException("Board not found: " + req.boardId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Board not found: " + req.boardId()));
         BoardColumn column = columns.findById(req.columnId())
-                .orElseThrow(() -> new IllegalArgumentException("Column not found: " + req.columnId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Column not found: " + req.columnId()));
         KanbanUser creator = users.findByEmail(callerEmail)
-                .orElseThrow(() -> new IllegalArgumentException("Kanban user not found for: " + callerEmail));
+                .orElseThrow(() -> new ResourceNotFoundException("Kanban user not found for: " + callerEmail));
 
         // --- 2. Authorize: caller must be a member of the target workspace,
         // and the board/column chain must be internally consistent ---
@@ -100,7 +100,7 @@ public class CardService {
         // --- 6. Optional assignee — validate then insert into card_assignees ---
         if (req.assigneeId() != null) {
             KanbanUser assignee = users.findById(req.assigneeId())
-                    .orElseThrow(() -> new IllegalArgumentException("Assignee not found: " + req.assigneeId()));
+                    .orElseThrow(() -> new ResourceNotFoundException("Assignee not found: " + req.assigneeId()));
 
             UUID callerDeptId = callerMembership.getDepartment() != null
                     ? callerMembership.getDepartment().getId()
@@ -151,15 +151,15 @@ public class CardService {
     @Transactional
     public MoveCardResponse moveCard(MoveCardRequest req, String callerEmail) {
         Card card = cards.findById(req.cardId())
-                .orElseThrow(() -> new IllegalArgumentException("Card not found: " + req.cardId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Card not found: " + req.cardId()));
 
         KanbanUser caller = users.findByEmail(callerEmail)
-                .orElseThrow(() -> new IllegalArgumentException("Kanban user not found for: " + callerEmail));
+                .orElseThrow(() -> new ResourceNotFoundException("Kanban user not found for: " + callerEmail));
         memberships.findByWorkspaceIdAndUserId(card.getWorkspace().getId(), caller.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Caller has no membership in this workspace"));
+                .orElseThrow(() -> new ResourceNotFoundException("Caller has no membership in this workspace"));
 
         BoardColumn targetCol = columns.findById(req.columnId())
-                .orElseThrow(() -> new IllegalArgumentException("Column not found: " + req.columnId()));
+                .orElseThrow(() -> new ResourceNotFoundException("Column not found: " + req.columnId()));
         if (!targetCol.getBoard().getId().equals(card.getBoard().getId())) {
             throw new IllegalArgumentException("Column does not belong to the card's board");
         }
@@ -205,13 +205,13 @@ public class CardService {
     @Transactional
     public void deleteCard(UUID cardId, String callerEmail) {
         Card card = cards.findById(cardId)
-                .orElseThrow(() -> new IllegalArgumentException("Card not found: " + cardId));
+                .orElseThrow(() -> new ResourceNotFoundException("Card not found: " + cardId));
 
         KanbanUser caller = users.findByEmail(callerEmail)
-                .orElseThrow(() -> new IllegalArgumentException("Kanban user not found for: " + callerEmail));
+                .orElseThrow(() -> new ResourceNotFoundException("Kanban user not found for: " + callerEmail));
 
         memberships.findByWorkspaceIdAndUserId(card.getWorkspace().getId(), caller.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Caller has no membership in this workspace"));
+                .orElseThrow(() -> new ResourceNotFoundException("Caller has no membership in this workspace"));
 
         // Remove the card's mirror copy from every assignee's Google calendar,
         // then delete the card_assignees rows explicitly. Card does not map
@@ -248,7 +248,7 @@ public class CardService {
             return null;
         }
         Card neighbor = cards.findById(neighborCardId)
-                .orElseThrow(() -> new IllegalArgumentException("Neighbor card not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Neighbor card not found: " + neighborCardId));
         if (!neighbor.getColumn().getId().equals(column.getId())) {
             throw new IllegalArgumentException("Neighbor card is not in the target column");
         }

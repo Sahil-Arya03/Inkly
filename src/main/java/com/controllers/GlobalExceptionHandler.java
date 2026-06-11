@@ -2,6 +2,7 @@ package com.controllers;
 
 import com.dto.ErrorResponse;
 import com.kanban.service.CardService;
+import com.kanban.service.ResourceNotFoundException;
 import com.security.LoginRateLimiter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -11,6 +12,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -43,9 +45,25 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleBadBody(HttpMessageNotReadableException ex) {
-        log.warn("Request body parse error: {}", ex.getMessage());
+        // Parser details (class names, offsets, raw input) stay in the log.
+        log.warn("Request body parse error: {}", ex.getMostSpecificCause().getMessage());
         return ResponseEntity.badRequest()
-                .body(new ErrorResponse("BAD_REQUEST", "Invalid request body: " + ex.getMostSpecificCause().getMessage()));
+                .body(new ErrorResponse("BAD_REQUEST", "Malformed request body"));
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        log.warn("Parameter type mismatch for '{}'", ex.getName());
+        return ResponseEntity.badRequest()
+                .body(new ErrorResponse("BAD_REQUEST", "Invalid request parameter"));
+    }
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleResourceNotFound(ResourceNotFoundException ex) {
+        // Detail (ids, emails, whose workspace) is log-only by contract.
+        log.warn("Resource not found or not accessible: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("NOT_FOUND", "Resource not found"));
     }
 
     @ExceptionHandler(LoginRateLimiter.RateLimitExceededException.class)

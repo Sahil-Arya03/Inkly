@@ -26,7 +26,7 @@ public class AssigneeService {
     @Transactional(readOnly = true)
     public List<AssigneeDto> fetchAssignees(String callerEmail) {
         UUID callerId = kanbanUsers.findByEmail(callerEmail)
-            .orElseThrow(() -> new IllegalArgumentException("Kanban user not found for: " + callerEmail))
+            .orElseThrow(() -> new ResourceNotFoundException("Kanban user not found for: " + callerEmail))
             .getId();
 
         List<Membership> callerMemberships = memberships.findByUserId(callerId);

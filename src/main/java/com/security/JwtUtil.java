@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtUtil {
@@ -34,6 +35,8 @@ public class JwtUtil {
         long expiry = rememberMe ? 30L * 24 * 60 * 60 * 1000 : expiryMs;
         return Jwts.builder()
                 .setSubject(email)
+                // Random jti so individual tokens can be revoked (denylist).
+                .setId(UUID.randomUUID().toString())
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiry))
                 .signWith(key, SignatureAlgorithm.HS256)
@@ -42,6 +45,15 @@ public class JwtUtil {
 
     public String extractEmail(String token) {
         return parseClaims(token).getSubject();
+    }
+
+    /** The token's jti claim, or null for legacy tokens issued without one. */
+    public String extractJti(String token) {
+        return parseClaims(token).getId();
+    }
+
+    public Date extractExpiration(String token) {
+        return parseClaims(token).getExpiration();
     }
 
     public boolean isValid(String token) {

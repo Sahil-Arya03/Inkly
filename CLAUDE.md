@@ -175,7 +175,7 @@ The backend is **Spring Boot 4.1 (RC)** packaged as a WAR, listening on port **8
 
 **Key config (`application.properties`):**
 - `jwt.secret` — signing key, sourced from the `JWT_SECRET` environment variable (no default; ≥32 bytes required by HS256)
-- `jwt.expiry-ms=86400000` — base 24h token lifetime; `rememberMe=true` overrides to 30 days in `JwtUtil`
+- `jwt.expiry-ms=43200000` — base 12h token lifetime; `rememberMe=true` overrides to 30 days in `JwtUtil`. Tokens carry a `jti`; logout denylists it (`revoked_tokens` table) and `JwtAuthFilter` rejects denylisted tokens
 - `cors.allowed-origins=http://localhost:3000,http://localhost:55067,http://127.0.0.1:3000,http://127.0.0.1:55067` — multiple origins supported; add any additional dev ports here
 - `inkly.kanban.wip.strict=false` — WIP limit violations warn only; set `true` to block moves
 

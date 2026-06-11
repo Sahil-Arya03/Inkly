@@ -19,12 +19,15 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final UserDetailsServiceImpl userDetailsService;
     private final KanbanUserRepository kanbanUserRepository;
+    private final TokenRevocationService tokenRevocation;
 
     public JwtAuthFilter(JwtUtil jwtUtil, UserDetailsServiceImpl userDetailsService,
-                         KanbanUserRepository kanbanUserRepository) {
+                         KanbanUserRepository kanbanUserRepository,
+                         TokenRevocationService tokenRevocation) {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
         this.kanbanUserRepository = kanbanUserRepository;
+        this.tokenRevocation = tokenRevocation;
     }
 
     @Override
@@ -32,7 +35,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                                     FilterChain chain) throws ServletException, IOException {
         String token = extractToken(req);
 
-        if (token != null && jwtUtil.isValid(token)) {
+        if (token != null && jwtUtil.isValid(token) && !isRevoked(token)) {
             String email = jwtUtil.extractEmail(token);
             if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                 UserDetails user = userDetailsService.loadUserByUsername(email);
@@ -49,6 +52,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         }
 
         chain.doFilter(req, res);
+    }
+
+    /**
+     * Tokens without a jti cannot be revoked, so they are treated as revoked
+     * (this only affects tokens issued before the denylist existed; the JWT
+     * secret rotation invalidates those anyway).
+     */
+    private boolean isRevoked(String token) {
+        String jti = jwtUtil.extractJti(token);
+        return jti == null || tokenRevocation.isRevoked(jti);
     }
 
     private String extractToken(HttpServletRequest req) {

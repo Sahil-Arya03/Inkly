@@ -8,6 +8,7 @@ import com.kanban.service.WorkspaceSetupService;
 import com.repositories.UserRepository;
 import com.security.JwtUtil;
 import com.security.LoginRateLimiter;
+import com.security.TokenRevocationService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -27,6 +28,7 @@ public class AuthController {
     private final JwtUtil jwtUtil;
     private final WorkspaceSetupService workspaceSetup;
     private final LoginRateLimiter rateLimiter;
+    private final TokenRevocationService tokenRevocation;
 
     /**
      * Adds the Secure attribute to the auth cookie. false for plain-HTTP dev;
@@ -37,12 +39,13 @@ public class AuthController {
 
     public AuthController(UserRepository userRepo, PasswordEncoder passwordEncoder,
                           JwtUtil jwtUtil, WorkspaceSetupService workspaceSetup,
-                          LoginRateLimiter rateLimiter) {
+                          LoginRateLimiter rateLimiter, TokenRevocationService tokenRevocation) {
         this.userRepo = userRepo;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
         this.workspaceSetup = workspaceSetup;
         this.rateLimiter = rateLimiter;
+        this.tokenRevocation = tokenRevocation;
     }
 
     @PostMapping("/register")
@@ -60,7 +63,7 @@ public class AuthController {
                 req.getWorkspace()
         ));
         workspaceSetup.bootstrap(user.getEmail(), user.getName(), user.getWorkspace());
-        int maxAge = 24 * 3600;
+        int maxAge = (int) (jwtUtil.getExpiryMs() / 1000);
         String token = jwtUtil.generate(user.getEmail(), false);
         setCookieHeader(res, token, maxAge);
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -82,16 +85,33 @@ public class AuthController {
         rateLimiter.recordSuccess(ip, req.getEmail());
         workspaceSetup.bootstrap(user.getEmail(), user.getName(), user.getWorkspace());
         boolean rememberMe = req.isRememberMe();
-        int maxAge = rememberMe ? 30 * 24 * 3600 : 24 * 3600;
+        int maxAge = rememberMe ? 30 * 24 * 3600 : (int) (jwtUtil.getExpiryMs() / 1000);
         String token = jwtUtil.generate(user.getEmail(), rememberMe);
         setCookieHeader(res, token, maxAge);
         return ResponseEntity.ok(new AuthResponse(user.getEmail(), user.getName(), user.getWorkspace(), (long) maxAge * 1000));
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(HttpServletResponse res) {
+    public ResponseEntity<Void> logout(HttpServletRequest req, HttpServletResponse res) {
+        // Denylist the presented token so it cannot be replayed after logout.
+        String token = readAuthCookie(req);
+        if (token != null) {
+            tokenRevocation.revoke(token);
+        }
         setCookieHeader(res, "", 0);
         return ResponseEntity.noContent().build();
+    }
+
+    private static String readAuthCookie(HttpServletRequest req) {
+        if (req.getCookies() == null) {
+            return null;
+        }
+        for (var cookie : req.getCookies()) {
+            if ("inkly_token".equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
     }
 
     /**

@@ -55,6 +55,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 // Google redirects here without our session cookie, so it must be public.
                 .requestMatchers("/api/calendar/oauth/callback").permitAll()
+                // Load balancer / orchestrator probes; only health is exposed.
+                .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                 .requestMatchers("/*.html", "/*.jsx", "/*.css", "/*.js").permitAll()
                 .anyRequest().authenticated()
             )

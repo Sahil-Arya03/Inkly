@@ -9,6 +9,7 @@ import com.repositories.UserRepository;
 import com.security.JwtUtil;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,6 +24,13 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final WorkspaceSetupService workspaceSetup;
+
+    /**
+     * Adds the Secure attribute to the auth cookie. false for plain-HTTP dev;
+     * the prod profile must set it to true so the JWT never travels over HTTP.
+     */
+    @Value("${app.security.cookie-secure:false}")
+    private boolean cookieSecure;
 
     public AuthController(UserRepository userRepo, PasswordEncoder passwordEncoder,
                           JwtUtil jwtUtil, WorkspaceSetupService workspaceSetup) {
@@ -68,12 +76,13 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(HttpServletResponse res) {
-        res.addHeader("Set-Cookie", "inkly_token=; Path=/; HttpOnly; Max-Age=0; SameSite=Lax");
+        setCookieHeader(res, "", 0);
         return ResponseEntity.noContent().build();
     }
 
     private void setCookieHeader(HttpServletResponse res, String token, int maxAgeSec) {
         res.addHeader("Set-Cookie",
-                "inkly_token=" + token + "; Path=/; HttpOnly; Max-Age=" + maxAgeSec + "; SameSite=Lax");
+                "inkly_token=" + token + "; Path=/; HttpOnly; Max-Age=" + maxAgeSec + "; SameSite=Lax"
+                + (cookieSecure ? "; Secure" : ""));
     }
 }

@@ -75,6 +75,12 @@ public class CalendarEventService {
             if (u == null) {
                 continue;
             }
+            // Only members of the event's workspace may be attached as
+            // attendees — a foreign user id must not receive the event.
+            if (!uid.equals(caller.getId())
+                    && memberships.findByWorkspaceIdAndUserId(workspace.getId(), uid).isEmpty()) {
+                continue;
+            }
             EventAttendee ea = new EventAttendee(saved, u);
             attendees.save(ea);
             saved.getAttendees().add(ea);

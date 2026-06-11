@@ -43,12 +43,16 @@ public class KanbanController {
     /**
      * Move a card to a new column/position.
      * Rank is computed server-side from destination neighbors.
+     * Caller must belong to the card's workspace.
      */
     @PatchMapping("/cards/{id}/move")
     public MoveCardResponse moveCard(
             @PathVariable UUID id,
-            @RequestBody MoveCardRequest req) {
-        return cardService.moveCard(new MoveCardRequest(id, req.columnId(), req.afterCardId(), req.beforeCardId()));
+            @RequestBody MoveCardRequest req,
+            Authentication auth) {
+        return cardService.moveCard(
+                new MoveCardRequest(id, req.columnId(), req.afterCardId(), req.beforeCardId()),
+                auth.getName());
     }
 
     /**

@@ -6,7 +6,6 @@ import com.kanban.web.dto.BoardLoadResponse;
 import com.kanban.web.dto.CardResponse;
 import com.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,29 +25,18 @@ public class BoardService {
     private final CardRepository      cardRepo;
 
     /**
-     * Finds the first board for the authenticated user's workspace.
-     * Falls back to the first available board (seed / prototype mode).
+     * Finds the first board for the authenticated user's workspace. Never
+     * falls back to another workspace's board — if the caller's workspace or
+     * board cannot be resolved, that's a 404.
      */
     @Transactional(readOnly = true)
     public BoardLoadResponse loadBoardForUser(String email) {
-        // 1. Resolve workspace from the auth user's workspace name
         Board board = authUserRepo.findByEmail(email)
             .flatMap(u -> workspaceRepo.findBySlug(slugify(u.getWorkspace())))
             .flatMap(ws -> boardRepo.findByWorkspaceId(ws.getId()).stream().findFirst())
-            // Fallback: any board in the system (covers seed profile without matching slug)
-            .orElseGet(() -> boardRepo.findAll(Sort.by("createdAt"))
-                .stream().findFirst()
-                .orElseThrow(() -> new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "No boards found. Start the app with --spring.profiles.active=seed to seed data.")));
+            .orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.NOT_FOUND, "No board found for your workspace"));
 
-        return buildResponse(board);
-    }
-
-    @Transactional(readOnly = true)
-    public BoardLoadResponse loadBoard(UUID boardId) {
-        Board board = boardRepo.findById(boardId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Board not found: " + boardId));
         return buildResponse(board);
     }
 

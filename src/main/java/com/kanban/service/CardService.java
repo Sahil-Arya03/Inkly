@@ -57,22 +57,31 @@ public class CardService {
         KanbanUser creator = users.findByEmail(callerEmail)
                 .orElseThrow(() -> new IllegalArgumentException("Kanban user not found for: " + callerEmail));
 
-        // --- 2. Claim next seq (pessimistic lock → single-row serialization) ---
+        // --- 2. Authorize: caller must be a member of the target workspace,
+        // and the board/column chain must be internally consistent ---
+        Membership callerMembership = memberships.findByWorkspaceIdAndUserId(
+                workspace.getId(), creator.getId())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Caller has no membership in this workspace"));
+        if (!board.getWorkspace().getId().equals(workspace.getId())) {
+            throw new IllegalArgumentException("Board does not belong to the given workspace");
+        }
+        if (!column.getBoard().getId().equals(board.getId())) {
+            throw new IllegalArgumentException("Column does not belong to the given board");
+        }
+
+        // --- 3. Claim next seq (pessimistic lock → single-row serialization) ---
         WorkspaceCounter counter = counters.lockByWorkspaceId(req.workspaceId());
         int seq = counter.getNextCardSeq();
         counter.setNextCardSeq(seq + 1);
         counters.save(counter);
 
-        // --- 3. Compute rank from destination neighbors ---
-        String loRank = req.afterCardId() != null
-                ? cards.findById(req.afterCardId()).orElseThrow().getRank()
-                : null;
-        String hiRank = req.beforeCardId() != null
-                ? cards.findById(req.beforeCardId()).orElseThrow().getRank()
-                : null;
+        // --- 4. Compute rank from destination neighbors ---
+        String loRank = neighborRank(req.afterCardId(), column);
+        String hiRank = neighborRank(req.beforeCardId(), column);
         String rank = rankGen.between(loRank, hiRank);
 
-        // --- 4. Persist ---
+        // --- 5. Persist ---
         Card card = Card.builder()
                 .workspace(workspace)
                 .board(board)
@@ -88,15 +97,10 @@ public class CardService {
 
         Card saved = cards.save(card);
 
-        // --- 5. Optional assignee — validate then insert into card_assignees ---
+        // --- 6. Optional assignee — validate then insert into card_assignees ---
         if (req.assigneeId() != null) {
             KanbanUser assignee = users.findById(req.assigneeId())
                     .orElseThrow(() -> new IllegalArgumentException("Assignee not found: " + req.assigneeId()));
-
-            Membership callerMembership = memberships.findByWorkspaceIdAndUserId(
-                    workspace.getId(), creator.getId())
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "Caller has no membership in this workspace"));
 
             UUID callerDeptId = callerMembership.getDepartment() != null
                     ? callerMembership.getDepartment().getId()
@@ -135,7 +139,8 @@ public class CardService {
     // ------------------------------------------------------------------
 
     /**
-     * Moves a card to a new column/position.
+     * Moves a card to a new column/position. The caller must be a member of
+     * the card's workspace (same rule as {@link #deleteCard}).
      *
      * Rules:
      * - Only the moved card's column_id and rank are updated (no sibling renaming).
@@ -144,11 +149,20 @@ public class CardService {
      * {@code inkly.kanban.wip.strict}.
      */
     @Transactional
-    public MoveCardResponse moveCard(MoveCardRequest req) {
+    public MoveCardResponse moveCard(MoveCardRequest req, String callerEmail) {
         Card card = cards.findById(req.cardId())
                 .orElseThrow(() -> new IllegalArgumentException("Card not found: " + req.cardId()));
+
+        KanbanUser caller = users.findByEmail(callerEmail)
+                .orElseThrow(() -> new IllegalArgumentException("Kanban user not found for: " + callerEmail));
+        memberships.findByWorkspaceIdAndUserId(card.getWorkspace().getId(), caller.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Caller has no membership in this workspace"));
+
         BoardColumn targetCol = columns.findById(req.columnId())
                 .orElseThrow(() -> new IllegalArgumentException("Column not found: " + req.columnId()));
+        if (!targetCol.getBoard().getId().equals(card.getBoard().getId())) {
+            throw new IllegalArgumentException("Column does not belong to the card's board");
+        }
 
         // --- WIP check ---
         boolean overLimit = false;
@@ -167,12 +181,8 @@ public class CardService {
         }
 
         // --- Compute rank from neighbors (server-side only) ---
-        String loRank = req.afterCardId() != null
-                ? cards.findById(req.afterCardId()).orElseThrow().getRank()
-                : null;
-        String hiRank = req.beforeCardId() != null
-                ? cards.findById(req.beforeCardId()).orElseThrow().getRank()
-                : null;
+        String loRank = neighborRank(req.afterCardId(), targetCol);
+        String hiRank = neighborRank(req.beforeCardId(), targetCol);
         String newRank = rankGen.between(loRank, hiRank);
 
         // --- Single-row update ---
@@ -222,6 +232,27 @@ public class CardService {
         cardAssignees.flush();
 
         cards.delete(card);
+    }
+
+    // ------------------------------------------------------------------
+    // Helpers
+    // ------------------------------------------------------------------
+
+    /**
+     * Resolves a rank neighbor's rank, enforcing that the neighbor actually
+     * sits in the destination column — a foreign card id must not influence
+     * ordering (or be probed for existence) across workspaces.
+     */
+    private String neighborRank(UUID neighborCardId, BoardColumn column) {
+        if (neighborCardId == null) {
+            return null;
+        }
+        Card neighbor = cards.findById(neighborCardId)
+                .orElseThrow(() -> new IllegalArgumentException("Neighbor card not found"));
+        if (!neighbor.getColumn().getId().equals(column.getId())) {
+            throw new IllegalArgumentException("Neighbor card is not in the target column");
+        }
+        return neighbor.getRank();
     }
 
     // ------------------------------------------------------------------

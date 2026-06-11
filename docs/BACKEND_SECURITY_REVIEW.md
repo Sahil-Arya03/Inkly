@@ -88,8 +88,8 @@ Allowed origins are explicitly listed (not `*`) which is required when `allowCre
 
 | Gap | Detail | Fix |
 |---|---|---|
-| Hardcoded JWT secret | `jwt.secret=inkly-super-secret-key-please-change-before-going-to-production` committed to source | Move to environment variable; use 256-bit random value |
-| Hardcoded DB password | `neondb_owner` / `npg_5ZJSpjXVovC3` in `application.properties` | Move to environment variable |
+| Hardcoded JWT secret | `jwt.secret=<redacted>` committed to source | Move to environment variable; use 256-bit random value |
+| Hardcoded DB password | `neondb_owner` / `<redacted>` in `application.properties` | Move to environment variable |
 | Missing `Secure` cookie flag | Cookie sent over HTTP | Add `; Secure` suffix in `setCookieHeader()` when not in dev profile |
 
 ### HIGH

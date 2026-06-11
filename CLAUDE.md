@@ -21,6 +21,12 @@ mvn cargo:run            # alternative: embedded Tomcat on port 8080
 mvn test                 # run JUnit tests
 ```
 
+**Required environment variables (backend):** secrets are no longer in `application.properties` — the app fails fast at startup if one is missing. See `.env.example` for the full list (`DB_PASSWORD`, `JWT_SECRET`, `GOOGLE_OAUTH_CLIENT_SECRET`, `CALENDAR_TOKEN_ENCRYPTION_KEY`). Spring does not read `.env` files; set them in the shell before starting the backend, e.g. (PowerShell):
+```powershell
+$env:DB_PASSWORD='...'; $env:JWT_SECRET='...'; $env:GOOGLE_OAUTH_CLIENT_SECRET='...'; $env:CALENDAR_TOKEN_ENCRYPTION_KEY='...'
+mvn spring-boot:run
+```
+
 **Both servers must be running** for auth and kanban to work. Start the backend first (`mvn spring-boot:run`), then the frontend (`npm run dev`). The Vite dev server proxies `/api` to the backend, so the browser sees a single origin and the `inkly_token` cookie stays same-site.
 
 ## Architecture
@@ -143,7 +149,7 @@ The backend is **Spring Boot 4.1 (RC)** packaged as a WAR, listening on port **8
 
 **Database:**
 - PostgreSQL on **Neon** (cloud): `ep-steep-brook-aoaf38ce-pooler.c-2.ap-southeast-1.aws.neon.tech/neondb`
-- Credentials in `application.properties` (`neondb_owner` / `npg_5ZJSpjXVovC3`)
+- Username `neondb_owner` in `application.properties`; password comes from the `DB_PASSWORD` environment variable
 - `spring.jpa.hibernate.ddl-auto=none` — schema managed by **Flyway**
 - Flyway migrations in `src/main/resources/db/migration/`; current: `V1__kanban_schema.sql`
 
@@ -168,7 +174,7 @@ The backend is **Spring Boot 4.1 (RC)** packaged as a WAR, listening on port **8
 **Why two user tables:** `APP_USERS` is the Spring Security auth table (JWT validation); `users` is the kanban domain table referenced by `cards.created_by` and `card_assignees`. `WorkspaceSetupService` keeps them in sync on every login/register.
 
 **Key config (`application.properties`):**
-- `jwt.secret` — signing key (**must move to env var before production**; current value is committed)
+- `jwt.secret` — signing key, sourced from the `JWT_SECRET` environment variable (no default; ≥32 bytes required by HS256)
 - `jwt.expiry-ms=86400000` — base 24h token lifetime; `rememberMe=true` overrides to 30 days in `JwtUtil`
 - `cors.allowed-origins=http://localhost:3000,http://localhost:55067,http://127.0.0.1:3000,http://127.0.0.1:55067` — multiple origins supported; add any additional dev ports here
 - `inkly.kanban.wip.strict=false` — WIP limit violations warn only; set `true` to block moves

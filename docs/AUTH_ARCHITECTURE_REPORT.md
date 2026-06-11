@@ -21,7 +21,7 @@
 |---|---|
 | Algorithm | **HS256** (symmetric HMAC-SHA-256) via jjwt |
 | Key init | `@PostConstruct`, built from `jwt.secret` as UTF-8 bytes |
-| Secret (committed) | `inkly-super-secret-key-please-change-before-going-to-production` |
+| Secret (committed) | `<redacted — historical weak secret, since rotated and moved to env var>` |
 | Token lifetime | **24 hours** (`jwt.expiry-ms=86400000`) — fixed, no variable expiry |
 | Claims | `sub` (email), `iat`, `exp` only — no roles, no workspace |
 | Validation | Signature + expiry only — no denylist |
@@ -150,7 +150,7 @@ public Map<String, Object> me(Authentication auth) {
 | **CRITICAL** | JWT in response body / localStorage | Token returned as JSON field, stored by frontend in `localStorage` — XSS-stealable |
 | **HIGH** | No server-side logout | No `/api/auth/logout` endpoint; no token denylist; clearing localStorage doesn't invalidate token |
 | **HIGH** | No HttpOnly cookie | `allowCredentials=true` in CORS is configured but no cookie is ever set — misconfiguration |
-| **HIGH** | Committed JWT secret | `inkly-super-secret-key-please-change-before-going-to-production` in source control |
+| **HIGH** | Committed JWT secret | `<redacted>` in source control (since rotated; now from `JWT_SECRET` env var) |
 | **HIGH** | Remember Me non-functional | UI checkbox exists, always defaults `true`; backend always issues 24h token regardless |
 | **MEDIUM** | No token refresh mechanism | Single 24h token, no refresh token; user must re-login after expiry |
 | **MEDIUM** | Password validation mismatch | Login accepts 6-char passwords; registration requires 8-char |

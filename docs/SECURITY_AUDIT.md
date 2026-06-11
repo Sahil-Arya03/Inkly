@@ -42,9 +42,10 @@
 ```properties
 spring.datasource.url=jdbc:postgresql://...neon.tech/neondb?sslmode=require
 spring.datasource.username=neondb_owner
-spring.datasource.password=npg_5ZJSpjXVovC3
+spring.datasource.password=<redacted>
 
-jwt.secret=inkly-super-secret-key-please-change-before-going-to-production
+jwt.secret=<redacted>
+
 ```
 
 **Impact:** Anyone with read access to the repository has full DB credentials and can forge JWTs. The Neon DB URL, username, and password are live.
@@ -62,7 +63,7 @@ jwt.secret=inkly-super-secret-key-please-change-before-going-to-production
 
 **File:** `application.properties` line 13
 
-The value `inkly-super-secret-key-please-change-before-going-to-production` is a human-readable string. Even after moving to environment variables, the replacement must be cryptographically random.
+The original value (redacted) was a human-readable string. Even after moving to environment variables, the replacement must be cryptographically random.
 
 **Recommendation:** Generate with:
 ```bash

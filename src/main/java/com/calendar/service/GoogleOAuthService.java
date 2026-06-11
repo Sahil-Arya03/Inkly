@@ -1,7 +1,9 @@
 package com.calendar.service;
 
 import com.calendar.domain.GoogleCalendarLink;
+import com.calendar.domain.OAuthState;
 import com.calendar.repository.GoogleCalendarLinkRepository;
+import com.calendar.repository.OAuthStateRepository;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
 import com.google.api.client.googleapis.auth.oauth2.GoogleRefreshTokenRequest;
@@ -14,7 +16,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.Base64;
 import java.util.UUID;
 
 /**
@@ -26,11 +31,16 @@ import java.util.UUID;
 @Slf4j
 public class GoogleOAuthService {
 
+    /** How long an issued state value can be redeemed. */
+    private static final Duration STATE_TTL = Duration.ofMinutes(10);
+
     private final GoogleAuthorizationCodeFlow flow;
     private final TokenEncryptionService tokenEncryption;
     private final GoogleCalendarLinkRepository links;
+    private final OAuthStateRepository states;
     private final NetHttpTransport httpTransport;
     private final GsonFactory jsonFactory;
+    private final SecureRandom secureRandom = new SecureRandom();
 
     @Value("${google.oauth.redirect-uri}")
     private String redirectUri;
@@ -44,29 +54,54 @@ public class GoogleOAuthService {
     public GoogleOAuthService(GoogleAuthorizationCodeFlow flow,
                               TokenEncryptionService tokenEncryption,
                               GoogleCalendarLinkRepository links,
+                              OAuthStateRepository states,
                               NetHttpTransport httpTransport,
                               GsonFactory jsonFactory) {
         this.flow = flow;
         this.tokenEncryption = tokenEncryption;
         this.links = links;
+        this.states = states;
         this.httpTransport = httpTransport;
         this.jsonFactory = jsonFactory;
     }
 
-    /** Builds the Google consent URL, carrying the user id in {@code state}. */
+    /**
+     * Builds the Google consent URL. {@code state} is 32 random bytes
+     * (base64url), persisted server-side mapped to the user, single-use,
+     * valid for {@link #STATE_TTL}.
+     */
     public String buildAuthorizationUrl(KanbanUser user) {
+        byte[] raw = new byte[32];
+        secureRandom.nextBytes(raw);
+        String state = Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
+
+        // Opportunistic purge of states that can no longer be redeemed.
+        states.deleteByCreatedAtBefore(Instant.now().minus(STATE_TTL));
+        states.save(new OAuthState(state, user.getId(), Instant.now()));
+
         return flow.newAuthorizationUrl()
                 .setRedirectUri(redirectUri)
-                .setState(user.getId().toString())
+                .setState(state)
                 .build();
     }
 
     /**
      * Exchanges the authorization {@code code} for tokens and upserts the
-     * user's {@link GoogleCalendarLink}. {@code state} is the kanban user UUID.
+     * user's {@link GoogleCalendarLink}. The {@code state} must match a
+     * stored, unexpired, never-used value; it is consumed on first sight so
+     * a replayed or forged state is rejected before any token exchange.
      */
     public GoogleCalendarLink handleCallback(String code, String state) throws IOException {
-        UUID userId = UUID.fromString(state);
+        OAuthState stored = (state == null || state.isBlank())
+                ? null
+                : states.findById(state).orElse(null);
+        if (stored != null) {
+            states.delete(stored); // single-use: consume before anything else
+        }
+        if (stored == null || stored.getCreatedAt().isBefore(Instant.now().minus(STATE_TTL))) {
+            throw new IllegalStateException("OAuth state is missing, unknown, expired, or already used");
+        }
+        UUID userId = stored.getUserId();
 
         GoogleTokenResponse tokenResponse = flow.newTokenRequest(code)
                 .setRedirectUri(redirectUri)

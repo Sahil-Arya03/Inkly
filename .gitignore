@@ -43,3 +43,5 @@ desktop.ini
 !.env.example
 cookies.txt
 cookies2.txt
+application.properties
+application-prod.properties

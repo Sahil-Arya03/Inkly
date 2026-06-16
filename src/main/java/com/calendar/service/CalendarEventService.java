@@ -81,8 +81,11 @@ public class CalendarEventService {
                     && memberships.findByWorkspaceIdAndUserId(workspace.getId(), uid).isEmpty()) {
                 continue;
             }
+            // CalendarEvent.attendees is cascade=ALL, so adding to the managed
+            // collection persists the row on flush. Calling attendees.save(ea)
+            // as well would persist a second instance with the same composite id
+            // → NonUniqueObjectException. Let the cascade own the insert.
             EventAttendee ea = new EventAttendee(saved, u);
-            attendees.save(ea);
             saved.getAttendees().add(ea);
             syncService.pushEventToGoogle(saved, u);
         }

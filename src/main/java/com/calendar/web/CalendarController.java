@@ -20,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -70,7 +71,12 @@ public class CalendarController {
         Instant lastSyncedAt = links.findById(caller.getId())
                 .map(GoogleCalendarLink::getLastSyncedAt)
                 .orElse(null);
-        return Map.of("synced", true, "lastSyncedAt", lastSyncedAt);
+        // Map.of rejects null values; lastSyncedAt is null until the first sync
+        // completes (or when no Google account is linked), so use a null-tolerant map.
+        Map<String, Object> body = new HashMap<>();
+        body.put("synced", true);
+        body.put("lastSyncedAt", lastSyncedAt);
+        return body;
     }
 
     @GetMapping("/connection")

@@ -61,7 +61,7 @@ public class CardService {
         // and the board/column chain must be internally consistent ---
         Membership callerMembership = memberships.findByWorkspaceIdAndUserId(
                 workspace.getId(), creator.getId())
-                .orElseThrow(() -> new IllegalArgumentException(
+                .orElseThrow(() -> new ResourceNotFoundException(
                         "Caller has no membership in this workspace"));
         if (!board.getWorkspace().getId().equals(workspace.getId())) {
             throw new IllegalArgumentException("Board does not belong to the given workspace");
@@ -77,8 +77,20 @@ public class CardService {
         counters.save(counter);
 
         // --- 4. Compute rank from destination neighbors ---
-        String loRank = neighborRank(req.afterCardId(), column);
+        // When no position is given (the common case — the create modal sends
+        // neither neighbor), append the card to the END of the column. Without
+        // this, every card computed between(null,null) → the same rank ("n"),
+        // so cards collided and a later drag between two of them threw
+        // "lo must be strictly less than hi".
         String hiRank = neighborRank(req.beforeCardId(), column);
+        String loRank;
+        if (req.afterCardId() != null) {
+            loRank = neighborRank(req.afterCardId(), column);
+        } else if (req.beforeCardId() == null) {
+            loRank = lastRankInColumn(column);
+        } else {
+            loRank = null;
+        }
         String rank = rankGen.between(loRank, hiRank);
 
         // --- 5. Persist ---
@@ -253,6 +265,15 @@ public class CardService {
             throw new IllegalArgumentException("Neighbor card is not in the target column");
         }
         return neighbor.getRank();
+    }
+
+    /**
+     * Rank of the last (highest-ranked) card currently in the column, or null
+     * when the column is empty. Used to append new cards at the end.
+     */
+    private String lastRankInColumn(BoardColumn column) {
+        List<Card> inColumn = cards.findByColumnIdOrderByRankAsc(column.getId());
+        return inColumn.isEmpty() ? null : inColumn.get(inColumn.size() - 1).getRank();
     }
 
     // ------------------------------------------------------------------

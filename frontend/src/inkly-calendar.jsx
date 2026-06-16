@@ -28,7 +28,7 @@ function buildMonthGrid(year, month) {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const daysInPrev = new Date(year, month, 0).getDate();
   const startDow = first.getDay(); // 0 = Sun
-  const today = new Date(2026, 4, 9); // pinned "today" to May 9, 2026
+  const today = new Date(); // real "today" — only matches a cell in the current month/year
 
   const cells = [];
   for (let i = 0; i < startDow; i++) {
@@ -49,11 +49,19 @@ function buildMonthGrid(year, month) {
 
 export function CalendarPage({ onPushToast }) {
   const I = Icons;
+  // Real current date — the calendar opens on it and marks it as "today".
+  const TODAY = useMemo(() => new Date(), []);
   const [view, setView] = useState("month");
-  const [year] = useState(2026);
-  const [month, setMonth] = useState(4); // May
+  const [year, setYear] = useState(TODAY.getFullYear());
+  const [month, setMonth] = useState(TODAY.getMonth());
   const [active, setActive] = useState(new Set(CAL_CATEGORIES.map(c => c.id)));
-  const [picked, setPicked] = useState(9);
+  const [picked, setPicked] = useState(TODAY.getDate());
+
+  // True when day d (in the visible month/year) is the real current date.
+  const isCurrentDay = (d) => d === TODAY.getDate() && month === TODAY.getMonth() && year === TODAY.getFullYear();
+  const goPrevMonth = () => { if (month === 0) { setYear(y => y - 1); setMonth(11); } else setMonth(m => m - 1); };
+  const goNextMonth = () => { if (month === 11) { setYear(y => y + 1); setMonth(0); } else setMonth(m => m + 1); };
+  const goToToday   = () => { setYear(TODAY.getFullYear()); setMonth(TODAY.getMonth()); setPicked(TODAY.getDate()); };
 
   const [apiEvents, setApiEvents] = useState([]);
   const [loading, setLoading]     = useState(false);
@@ -65,6 +73,8 @@ export function CalendarPage({ onPushToast }) {
 
   const cells = useMemo(() => buildMonthGrid(year, month), [year, month]);
   const monthName = ["January","February","March","April","May","June","July","August","September","October","November","December"][month];
+  const monthAbbr = monthName.slice(0, 3);              // "May", "Jun", …
+  const monthAbbrUpper = monthAbbr.toUpperCase();       // "MAY", "JUN", … (upcoming list)
 
   // On mount: is Google connected?
   useEffect(() => {
@@ -154,11 +164,11 @@ export function CalendarPage({ onPushToast }) {
             <button className={view === "day"   ? "seg__btn seg__btn--active" : "seg__btn"} onClick={() => setView("day")}>Day</button>
           </div>
           <div className="cal-page__nav">
-            <button className="icon-btn" onClick={() => setMonth(m => Math.max(0, m - 1))} aria-label="Previous month">
+            <button className="icon-btn" onClick={goPrevMonth} aria-label="Previous month">
               <span style={{transform: "rotate(180deg)", display: "inline-flex"}}><I.Chevron/></span>
             </button>
-            <button className="btn" onClick={() => { setMonth(4); setPicked(9); onPushToast?.("Jumped to today"); }}>Today</button>
-            <button className="icon-btn" onClick={() => setMonth(m => Math.min(11, m + 1))} aria-label="Next month">
+            <button className="btn" onClick={() => { goToToday(); onPushToast?.("Jumped to today"); }}>Today</button>
+            <button className="icon-btn" onClick={goNextMonth} aria-label="Next month">
               <I.Chevron/>
             </button>
           </div>
@@ -231,10 +241,10 @@ export function CalendarPage({ onPushToast }) {
           <div style={{ display: "grid", gridTemplateColumns: "60px repeat(7, 1fr)", gap: 0, borderBottom: "1px solid var(--line)" }}>
             <div style={{ padding: 8 }} />
             {(() => {
-              const weekStart = picked - ((new Date(2026, month, picked).getDay()) || 0);
+              const weekStart = picked - ((new Date(year, month, picked).getDay()) || 0);
               return ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map((d, i) => {
                 const day = weekStart + i;
-                const isToday = day === 9 && month === 4;
+                const isToday = isCurrentDay(day);
                 const isPicked = day === picked;
                 return (
                   <div key={d} style={{ padding: "8px 6px", textAlign: "center", borderLeft: "1px solid var(--line)", cursor: "pointer", background: isPicked ? "var(--accent-tint, var(--paper-2))" : "transparent" }}
@@ -248,7 +258,7 @@ export function CalendarPage({ onPushToast }) {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "60px repeat(7, 1fr)", gap: 0 }}>
             {[9,10,11,12,13,14,15,16,17].map(h => {
-              const weekStart = picked - ((new Date(2026, month, picked).getDay()) || 0);
+              const weekStart = picked - ((new Date(year, month, picked).getDay()) || 0);
               return (
                 <React.Fragment key={h}>
                   <div style={{ padding: "6px 8px", fontSize: 11, color: "var(--ink-4)", fontFamily: "var(--font-mono)", borderTop: "1px solid var(--line)", textAlign: "right" }}>
@@ -278,9 +288,9 @@ export function CalendarPage({ onPushToast }) {
         {view === "day" && (
         <div className="card" style={{ flex: 1, minHeight: 400 }}>
           <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ fontSize: 32, fontWeight: 700, color: picked === 9 ? "var(--accent)" : "var(--ink-1)" }}>{picked}</div>
+            <div style={{ fontSize: 32, fontWeight: 700, color: isCurrentDay(picked) ? "var(--accent)" : "var(--ink-1)" }}>{picked}</div>
             <div>
-              <div style={{ fontWeight: 500 }}>{["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][new Date(2026, month, picked).getDay()]}</div>
+              <div style={{ fontWeight: 500 }}>{["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][new Date(year, month, picked).getDay()]}</div>
               <div style={{ fontSize: 12, color: "var(--ink-3)" }}>{monthName} {year}</div>
             </div>
           </div>
@@ -356,7 +366,7 @@ export function CalendarPage({ onPushToast }) {
           <div className="card">
             <div className="card__head">
               <h3 className="card__title">
-                {picked === 9 ? "Today · " : `May ${String(picked).padStart(2, "0")} · `}
+                {isCurrentDay(picked) ? "Today · " : `${monthAbbr} ${String(picked).padStart(2, "0")} · `}
                 <span style={{color: "var(--ink-3)", fontWeight: 400}}>{dayEvents.length} event{dayEvents.length === 1 ? "" : "s"}</span>
               </h3>
               <button className="btn btn--ghost btn--sm"><I.Plus s={12}/></button>
@@ -398,7 +408,7 @@ export function CalendarPage({ onPushToast }) {
                   <div key={i} className="cal-upnext__row" onClick={() => setPicked(e.day)}>
                     <div className="cal-upnext__date">
                       <div className="cal-upnext__date-d mono">{String(e.day).padStart(2, "0")}</div>
-                      <div className="cal-upnext__date-m mono">MAY</div>
+                      <div className="cal-upnext__date-m mono">{monthAbbrUpper}</div>
                     </div>
                     <div className="cal-upnext__body">
                       <div className="cal-upnext__title">{e.t}</div>

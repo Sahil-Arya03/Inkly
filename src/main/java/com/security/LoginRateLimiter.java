@@ -70,6 +70,11 @@ public class LoginRateLimiter {
         }
     }
 
+    /** Clears all limiter state (test isolation / emergency ops use). */
+    public void reset() {
+        entries.clear();
+    }
+
     /** Clears failure/lock state after a successful login. */
     public void recordSuccess(String ip, String username) {
         entries.remove(ipKey(ip));
